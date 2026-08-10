@@ -1,7 +1,11 @@
 ---
 name: free-vision-skill
-description: Understand images: text recognition (OCR), table structure extraction, content description of textless images (macOS Vision Framework, fully local)
+description: Understand images: text recognition (OCR), table structure extraction, content description of textless images (macOS Vision Framework, fully local). Use when a vision-less model needs to read or describe an image.
+license: MIT
 metadata:
+  author: niyongsheng
+  version: "1.0.0"
+  category: utilities
   allowed-tools:
     - Bash
 ---
