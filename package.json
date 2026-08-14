@@ -1,6 +1,6 @@
 {
   "name": "@niyongsheng/free-vision-skill",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DSH-Plugin for DeepSeek-Harness: fully-local image understanding & OCR powered by macOS Vision Framework",
   "type": "module",
   "main": "./dist/cordis/index.js",
