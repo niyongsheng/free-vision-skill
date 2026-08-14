@@ -6,9 +6,7 @@
 [![Framework](https://img.shields.io/badge/Framework-Vision-blueviolet)](https://developer.apple.com/documentation/vision)
 [![Privacy](https://img.shields.io/badge/Fully%20Local-Yes-success)](https://en.wikipedia.org/wiki/Local_computing)
 
-A fully-local image understanding skill powered by macOS Vision Framework. Helps models **without vision capabilities** (e.g. DeepSeek v4 Flash) read text, extract tables, and describe image content.
-
-> ✨ **DSH-Plugin for DeepSeek-Harness** — 同时支持两种形态：Cordis 原生插件 | Claude Code Skill
+A fully-local image understanding skill powered by macOS Vision Framework. Helps models **without vision capabilities** (e.g. DeepSeek v4 model) read text, extract tables, and describe image content.
 
 ## Features
 
@@ -25,7 +23,7 @@ A fully-local image understanding skill powered by macOS Vision Framework. Helps
 
 ---
 
-## DSH-Plugin 模式（DeepSeek-Harness 原生插件）
+## DSH-Plugin 模式
 
 以 Cordis 插件形态运行：参与 DSH Fiber 生命周期、`ctx.effect` 自动清理工具注册、Schema 配置面板、热重载。
 
@@ -35,7 +33,20 @@ A fully-local image understanding skill powered by macOS Vision Framework. Helps
 dsh plugin add github:niyongsheng/free-vision-skill
 ```
 
-（发布 npm 后可直接 `dsh plugin add @niyongsheng/free-vision-skill`）
+> 仓库带 `prepare` 脚本，git 安装时自动构建 `dist/`。
+> 发布 npm 后可直接 `dsh plugin add @niyongsheng/free-vision-skill`。
+
+然后在本 profile 的 `cordis.patch.yml` 中加入加载项（DSH 的 patch 格式）：
+
+```yaml
+- insert:
+    - id: free-vision-skill
+      name: '@niyongsheng/free-vision-skill'
+      config:
+        timeout: 120000
+```
+
+`cordis.patch.yml` 会被 DSH 热重载，无需重启 web 即可生效。
 
 ### 提供工具
 
@@ -51,11 +62,12 @@ dsh plugin add github:niyongsheng/free-vision-skill
 配置示例（`cordis.patch.yml`）：
 
 ```yaml
-plugins:
-  - use: @niyongsheng/free-vision-skill
-    with:
-      scriptPath: ~/free-vision-skill/scripts/ocr.swift  # 留空使用插件内置脚本
-      timeout: 120000                                     # swift 执行超时(ms)
+- insert:
+    - id: free-vision-skill
+      name: '@niyongsheng/free-vision-skill'
+      config:
+        scriptPath: ~/free-vision-skill/scripts/ocr.swift  # 留空使用插件内置脚本
+        timeout: 120000                                     # swift 执行超时(ms)
 ```
 
 | 配置项 | 类型 | 默认 | 说明 |
@@ -104,7 +116,7 @@ Or just ask Claude to recognize or describe an image — the skill is invoked au
 
 - First run compiles (~5-10s), cached afterwards
 - Supports PNG, JPG, JPEG, TIFF
-- 两种形态共用同一套 `scripts/ocr.swift` 业务逻辑，互不干扰
+- Supports DSH-Plugin
 
 ## License
 

@@ -9,6 +9,11 @@
  * - `ctx.effect()`：工具注册副作用，插件卸载 / Fiber 销毁时自动注销，无残留
  * - Schema 驱动配置：DSH 自动生成网页配置表单，支持热重载
  * - 业务逻辑全部在 scripts/ocr.swift（Swift / macOS Vision），本层只做外壳
+ *
+ * 工具定义契约（DSH @deepseek-ai/dsh-tools）：
+ * - parameters: property-map，`required: true` 在属性级声明
+ * - output: { schema, render } — schema 校验结果值，render 生成展示内容
+ * - execute: 执行体，返回值需符合 output.schema
  */
 
 import type { Context } from '@cordisjs/core'
@@ -70,8 +75,15 @@ export function apply(ctx: Context, config: Config) {
           },
         },
       },
-      async invoke(params) {
-        const { path, cleanup } = await prepareImage(String(params.image_url))
+      timeoutMs: config.timeout,
+      output: {
+        schema: { type: 'string' },
+        render(_args, value) {
+          return value
+        },
+      },
+      async execute(args) {
+        const { path, cleanup } = await prepareImage(String(args.image_url))
         try {
           return await runSwift(script, ['--describe', path], config.timeout)
         } finally {
@@ -99,11 +111,18 @@ export function apply(ctx: Context, config: Config) {
           },
         },
       },
-      async invoke(params) {
-        const { path, cleanup } = await prepareImage(String(params.image_url))
+      timeoutMs: config.timeout,
+      output: {
+        schema: { type: 'string' },
+        render(_args, value) {
+          return value
+        },
+      },
+      async execute(args) {
+        const { path, cleanup } = await prepareImage(String(args.image_url))
         try {
-          const args = params.layout ? ['--layout', path] : [path]
-          return await runSwift(script, args, config.timeout)
+          const scriptArgs = args.layout ? ['--layout', path] : [path]
+          return await runSwift(script, scriptArgs, config.timeout)
         } finally {
           await cleanup()
         }
