@@ -1,0 +1,8 @@
+# free-vision-skill bundle patch: mounts the plugin into a profile layer stack.
+# Runtime defaults live at the plugin's config boundary (timeout/saveDir/
+# maxImageSize). Users override them in their profile patch row with the same id.
+- insert:
+    - id: free-vision-skill
+      name: '@niyongsheng/free-vision-skill'
+      config:
+        timeout: 120000

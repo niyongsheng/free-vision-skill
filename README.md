@@ -32,19 +32,9 @@ Input: http(s) URL / base64 / local path.
 
 ## Paste-to-path (Web UI)
 
-In the DSH web input box, pasting (⌘V) an image saves it to
-`~/Pictures/free-vision/` (config: `saveDir`, `maxImageSize`) and inserts the
-absolute path — no network egress, loopback-only upload. Formats are
-magic-byte checked: PNG / JPEG / GIF / WebP / HEIC / HEIF (heic via ftyp box);
-anything else is refused. Dragging keeps DSH's native attachment behavior.
-
-```bash
-# dev: rebuild & redeploy to the web profile, then restart
-cp package.json ~/.dsh/profiles/web/node_modules/@niyongsheng/free-vision-skill/ \
-&& rm -rf ~/.dsh/profiles/web/node_modules/@niyongsheng/free-vision-skill/dist \
-&& cp -R dist ~/.dsh/profiles/web/node_modules/@niyongsheng/free-vision-skill/dist
-pkill -f "dsh web"; sleep 2; cd ~ && nohup npm exec --yes @deepseek-ai/dsh web > /tmp/dsh-web-restart.log 2>&1 &
-```
+Paste (⌘V) an image in the DSH web input box → its local absolute path is
+inserted. Loopback-only upload, magic-byte checked: PNG / JPEG / GIF / WebP /
+HEIC / HEIF.
 
 ## Usage (Claude Code Skill)
 

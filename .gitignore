@@ -1,3 +1,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+# local fork clone for PR work
+awesome-dsh-plugin/
