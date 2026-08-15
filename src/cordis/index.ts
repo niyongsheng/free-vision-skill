@@ -32,6 +32,8 @@ export {
 export type { UploadConfig } from './upload.js'
 // 魔数嗅探（单测与外部复用入口）
 export { sniffExt, sniffImageExt } from './swift.js'
+// SSRF 边界（单测与外部复用入口）
+export { isBlockedDownloadUrl } from './swift.js'
 
 // ---------- 插件配置定义 ----------
 

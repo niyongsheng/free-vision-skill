@@ -93,9 +93,38 @@ function isBase64(input: string): boolean {
   return /^[A-Za-z0-9+/]+={0,2}$/.test(input) && input.length > 32
 }
 
+/**
+ * SSRF 边界：拒绝向本机/内网地址发起下载（与上传路由的 loopback-only 对称）。
+ * 只做 hostname 级拦截（字面 IP / localhost）；DNS 重绑定等高级手法超出
+ * 本地单用户工具的风险模型。
+ */
+export function isBlockedDownloadUrl(url: string): boolean {
+  let hostname: string
+  try {
+    hostname = new URL(url).hostname
+  } catch {
+    return true
+  }
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) return true
+  // new URL().hostname 对 IPv6 字面量保留方括号，两种形态都拦
+  if (hostname === '::1' || hostname === '[::1]' || hostname === '0.0.0.0') return true
+  // 字面 IPv4：环回 / 私网 / 链路本地 / 组播与保留段
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) {
+    const [a, b] = hostname.split('.').map(Number)
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return true
+    if (a === 169 && b === 254) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+  }
+  return false
+}
+
 /** 把 image_url 参数解析为本地文件路径；http/base64 输入落到临时文件 */
 export async function prepareImage(imageUrl: string): Promise<PreparedImage> {
   if (/^https?:\/\//i.test(imageUrl)) {
+    if (isBlockedDownloadUrl(imageUrl)) {
+      throw new Error(`拒绝下载本机/内网地址: ${imageUrl}`)
+    }
     const dir = await mkdtemp(join(tmpdir(), 'free-vision-'))
     try {
       const resp = await fetch(imageUrl)

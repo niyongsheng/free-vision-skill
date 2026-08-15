@@ -176,6 +176,36 @@ test('sniffImageExt 严格模式拒绝非图片字节', async () => {
   assert.equal(sniffImageExt(jpgHead), '.jpg')
 })
 
+test('isBlockedDownloadUrl 拒绝本机/内网，放行公网', async () => {
+  const { isBlockedDownloadUrl } = await import('../dist/cordis/index.js')
+  const blocked = [
+    'http://127.0.0.1:3080/secret',
+    'http://localhost/x.png',
+    'http://10.0.0.1/x.png',
+    'http://169.254.169.254/latest/meta-data',
+    'http://192.168.1.1/x.png',
+    'http://172.16.0.1/x.png',
+    'http://[::1]/x.png',
+    'not a url',
+  ]
+  for (const url of blocked) {
+    assert.equal(isBlockedDownloadUrl(url), true, url)
+  }
+  const allowed = [
+    'http://example.com/x.png',
+    'https://avatars.githubusercontent.com/u/1?v=4',
+    'http://8.8.8.8/x.png', // 公网 IP 字面量
+  ]
+  for (const url of allowed) {
+    assert.equal(isBlockedDownloadUrl(url), false, url)
+  }
+  // prepareImage 对被拒 URL 直接报错，不发起网络请求
+  await assert.rejects(
+    () => tool('ocr_image').execute({ image_url: 'http://127.0.0.1:1/x.png' }, {}),
+    /拒绝下载本机\/内网地址/,
+  )
+})
+
 test('默认保存目录为 ~/Pictures/free-vision', () => {
   assert.equal(DEFAULT_SAVE_DIR, join(homedir(), 'Pictures', 'free-vision'))
 })
