@@ -1,6 +1,6 @@
 {
   "name": "@niyongsheng/free-vision-skill",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "DSH-Plugin for DeepSeek-Harness: fully-local image understanding & OCR powered by macOS Vision Framework",
   "type": "module",
   "main": "./dist/cordis/index.js",
@@ -9,7 +9,9 @@
     ".": {
       "types": "./dist/cordis/index.d.ts",
       "import": "./dist/cordis/index.js"
-    }
+    },
+    "./client": "./dist/cordis/client.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -28,6 +30,11 @@
     "name": "free-vision-skill",
     "config": "Config"
   },
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",
@@ -44,8 +51,14 @@
   },
   "devDependencies": {
     "@cordisjs/core": "^3.18.1",
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-runtime": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
     "@types/node": "^24.0.0",
+    "@types/react": "^18.2.0",
+    "react": "^18.2.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0"
   },

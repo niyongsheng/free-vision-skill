@@ -27,11 +27,62 @@ export interface PreparedImage {
   cleanup: () => Promise<void>
 }
 
-/** 按内容魔数嗅探扩展名（ImageIO 也能自动识别，扩展名仅作兜底） */
-function sniffExt(buf: Buffer): string {
-  if (buf[0] === 0xff && buf[1] === 0xd8) return '.jpg'
-  if (buf[0] === 0x89 && buf[1] === 0x50) return '.png'
-  return '.png'
+/**
+ * 魔数嗅探表（签名对齐 modlens 的 PASTE_SNIFFS / SNIFFERS，逐字节核对）：
+ * heic/heif 通过 ISO BMFF 的 ftyp box 品牌名区分，generic BMFF（如
+ * `ftypmp42` 视频）拒绝保存为图片。macOS Vision 原生支持这些全部格式。
+ */
+const SNIFFERS: Array<{ ext: string; test: (b: Buffer) => boolean }> = [
+  {
+    ext: '.png',
+    test: (b) =>
+      b.length >= 8 &&
+      b[0] === 0x89 &&
+      b[1] === 0x50 &&
+      b[2] === 0x4e &&
+      b[3] === 0x47 &&
+      b[4] === 0x0d &&
+      b[5] === 0x0a &&
+      b[6] === 0x1a &&
+      b[7] === 0x0a,
+  },
+  { ext: '.jpg', test: (b) => b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+  {
+    ext: '.gif',
+    test: (b) => b.length >= 6 && ['GIF87a', 'GIF89a'].includes(b.toString('ascii', 0, 6)),
+  },
+  {
+    ext: '.webp',
+    test: (b) =>
+      b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP',
+  },
+  {
+    ext: '.heic',
+    test: (b) =>
+      b.length >= 12 &&
+      b.toString('ascii', 4, 8) === 'ftyp' &&
+      ['heic', 'heix', 'hevc', 'hevx'].includes(b.toString('ascii', 8, 12)),
+  },
+  {
+    ext: '.heif',
+    test: (b) =>
+      b.length >= 12 &&
+      b.toString('ascii', 4, 8) === 'ftyp' &&
+      ['mif1', 'msf1', 'heif'].includes(b.toString('ascii', 8, 12)),
+  },
+]
+
+/** 严格嗅探：返回扩展名，字节不匹配任何已知图片头时返回 null */
+export function sniffImageExt(buf: Buffer): string | null {
+  for (const { ext, test } of SNIFFERS) {
+    if (test(buf)) return ext
+  }
+  return null
+}
+
+/** 宽松嗅探：未知格式兜底 .png（ImageIO 仍能按内容识别，扩展名仅作兜底） */
+export function sniffExt(buf: Buffer): string {
+  return sniffImageExt(buf) ?? '.png'
 }
 
 function isBase64(input: string): boolean {

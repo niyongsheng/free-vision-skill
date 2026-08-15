@@ -19,6 +19,19 @@
 import type { Context } from '@cordisjs/core'
 import Schema from '@deepseek-ai/schemastery'
 import { DEFAULT_SCRIPT, prepareImage, runSwift } from './swift.js'
+import { registerUploadRoute } from './upload.js'
+
+// 上传落盘纯函数（单测与外部复用入口）
+export {
+  DEFAULT_SAVE_DIR,
+  DEFAULT_MAX_IMAGE_SIZE,
+  handleImageUpload,
+  isLoopback,
+  stampName,
+} from './upload.js'
+export type { UploadConfig } from './upload.js'
+// 魔数嗅探（单测与外部复用入口）
+export { sniffExt, sniffImageExt } from './swift.js'
 
 // ---------- 插件配置定义 ----------
 
@@ -27,6 +40,10 @@ export interface Config {
   scriptPath?: string
   /** swift 执行超时(ms)。首次运行需编译约 5~10s，请留足余量 */
   timeout: number
+  /** 输入框粘贴图片的保存目录；留空使用 ~/Pictures/free-vision */
+  saveDir?: string
+  /** 粘贴图片大小上限(字节)，默认 20MB */
+  maxImageSize?: number
 }
 
 /** Schemastery Schema — DSH 据此自动渲染配置面板 */
@@ -37,6 +54,12 @@ export const Config = Schema.object({
   timeout: Schema.number()
     .default(120000)
     .description('swift 执行超时(ms)，首次运行需编译约 5~10s'),
+  saveDir: Schema.string()
+    .required(false)
+    .description('输入框粘贴图片的保存目录，默认 ~/Pictures/free-vision'),
+  maxImageSize: Schema.number()
+    .default(20 * 1024 * 1024)
+    .description('粘贴图片大小上限(字节)，默认 20MB'),
 })
 
 // ---------- 插件元信息 ----------
@@ -60,6 +83,9 @@ export function apply(ctx: Context, config: Config) {
 
   // ctx.effect：注册副作用，卸载时自动执行返回的 dispose
   ctx.effect(() => {
+    // 粘贴图片落盘路由：DSH web 组成提供 webServer 时注册；
+    // 无该服务（headless/Electron）则跳过，工具功能不受影响
+    const disposeUpload = mountUploadRoute(ctx, config)
     // 工具一：图像理解（--describe）
     const disposeViewImage = ctx.tools.register({
       name: 'view_image',
@@ -78,8 +104,11 @@ export function apply(ctx: Context, config: Config) {
       timeoutMs: config.timeout,
       output: {
         schema: { type: 'string' },
+        // content 必须是 blocks 数组（dsh-session 校验 tool-result 块：
+        // `!Array.isArray(block.content)` 即拒）；裸字符串会让会话持久化
+        // 校验失败、第二轮无法执行，甚至损坏历史会话
         render(_args, value) {
-          return value
+          return [{ type: 'text', text: String(value) }]
         },
       },
       async execute(args) {
@@ -114,8 +143,9 @@ export function apply(ctx: Context, config: Config) {
       timeoutMs: config.timeout,
       output: {
         schema: { type: 'string' },
+        // 同 view_image：content 必须是 blocks 数组（tool-result 契约）
         render(_args, value) {
-          return value
+          return [{ type: 'text', text: String(value) }]
         },
       },
       async execute(args) {
@@ -129,12 +159,27 @@ export function apply(ctx: Context, config: Config) {
       },
     })
 
-    // 返回清理函数：插件卸载时注销这两个工具
+    // 返回清理函数：插件卸载时注销工具与上传路由
     return () => {
       disposeViewImage()
       disposeOcrImage()
+      disposeUpload()
     }
   })
+}
+
+/**
+ * 可选挂载粘贴图片上传路由（webServer 服务为 web 组成独有，不做硬依赖）。
+ *
+ * 用 `ctx.inject(['webServer'], cb)` 声明动态依赖：服务可用时执行回调
+ * （bundle 层激活后），headless/Electron 无该服务时 fork 永远 pending，
+ * 工具功能不受影响。fork 作用域随本插件 ctx 卸载自动清理。
+ */
+function mountUploadRoute(ctx: Context, config: Config): () => void {
+  ctx.inject(['webServer'], (webServerCtx) => {
+    webServerCtx.effect(() => registerUploadRoute(webServerCtx.webServer, config))
+  })
+  return () => {}
 }
 
 /** 解析 ocr.swift 路径：配置优先，其次插件内置脚本 */

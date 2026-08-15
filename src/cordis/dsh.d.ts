@@ -1,6 +1,8 @@
+import type { IncomingMessage, ServerResponse } from 'node:http'
+
 /**
  * DeepSeek-Harness 扩展类型声明
- * DSH 内置的 tools 服务不在 @cordisjs/core 中定义，
+ * DSH 内置的 tools / webServer 服务不在 @cordisjs/core 中定义，
  * 通过 Context 接口增强声明，插件代码可获得完整类型。
  *
  * 工具定义契约（对照 @deepseek-ai/dsh-tools 源码，schemaOf 原样投影 parameters 到模型 API）：
@@ -20,7 +22,29 @@ declare module '@cordisjs/core' {
        */
       register(definition: DshToolDefinition): () => void
     }
+    /**
+     * DSH host webserver（@deepseek-ai/dsh-host-webserver）：HTTP 路由注册服务。
+     * web 组成提供；无该服务的组成（如 headless/Electron）中 `ctx.get('webServer')`
+     * 返回 undefined，粘贴上传功能自动降级，工具不受影响。
+     */
+    webServer: {
+      /**
+       * 注册一条命名路由；重复 (kind, path) 会抛错。
+       * @returns 移除该路由的 disposer
+       */
+      register(route: DshWebRoute): () => void
+    }
   }
+}
+
+/** webServer 路由定义（对齐 @deepseek-ai/dsh-host-webserver 的 WebRoute） */
+export interface DshWebRoute {
+  /** 'exact' 精确匹配 pathname；'prefix' 匹配 p 及 p/<anything> */
+  kind: 'exact' | 'prefix'
+  /** 绝对 pathname，无尾斜杠 */
+  path: string
+  /** 拥有完整响应生命周期（可 hold 住响应，如 SSE） */
+  handler: (req: IncomingMessage, res: ServerResponse) => void | Promise<void>
 }
 
 /** DSH 工具定义 */
