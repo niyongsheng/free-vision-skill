@@ -1,5 +1,8 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+# 创建 GitHub Release 时构建+测试（macOS：测试依赖 Swift/Vision Framework），然后发布到 npmjs.com
+# 前提：
+#   1. 仓库需配置 npm_token secret（npmjs.com 上生成的 access token，配在 Settings → Secrets）
+#   2. 发 release 前先在 package.json 里升版本，否则 publish 会因版本已存在而失败
+# 注意：types: [created] 对 pre-release 也会触发；若想排除，改用 published 并在步骤里判断
 
 name: Node.js Package
 
@@ -9,25 +12,35 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.2
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm test
+          cache: pnpm
+      # --frozen-lockfile 对应本地 pnpm-lock.yaml；install 时 prepare 脚本会自动跑 tsup 构建 dist
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
 
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.29.2
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
-      - run: npm ci
-      - run: npm publish
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # --no-git-checks：CI 上 checkout 的是 main 分支且版本未提交，pnpm 默认拒绝从 main 发布
+      - run: pnpm publish --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          NODE_AUTH_TOKEN: ${{ secrets.npm_token }}
